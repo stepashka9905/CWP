@@ -1,4 +1,88 @@
-const name = process.argv[0];
-const surname = process.argv[1];
-const name2 = process.argv[2];
-console.log(`Hi ${name} ${surname}, my name is ${name2}!`);
+// var name = process.argv[2];
+// var surname = process.argv[3];
+// console.log(name);
+// console.log(surname);
+
+// 4 task
+// {
+//
+// for (let i = 0;i<process.argv.length-2; i++){
+//     console.log(process.argv[i+2]);
+// }}
+
+// 5 task
+{
+    //----------подключаем модули--------
+    const path = require('path');
+    const fs = require('fs');
+    //----------проверяем на входные аргументы-------
+    if (process.argv.length < 3) {
+        console.log("Error (arguments) ");
+        process.exit();
+    }
+    if (process.argv.length > 3) {
+        console.log("Error (arguments) ");
+        process.exit();
+    }
+    //----------управление путём как строкой-----------
+    const DIR_PATH = process.argv[2];
+    const NEW_DIRECTORY = DIR_PATH + '\\' + path.basename(DIR_PATH);
+    let prefix = "";
+    const sum = fs.createWriteStream('summary.js');
+    let copyright = "";
+
+    //----------разбор и копирование содержимого директория--------
+    let readAndCopyDirectory = function (dir, prefix) {
+        fs.readdir(dir, (err, files) => {
+            if (err) {
+                console.error("Error (read files) " + dir);
+            } else {
+                files.forEach(function (element) {
+                    let new_unit = dir + '\\' + element;
+                    if (fs.statSync(new_unit).isDirectory()) {
+                        //----------рекурсивно проходим все директории----------
+                        readAndCopyDirectory(new_unit, prefix + element + '/');
+                    } else if (path.extname(new_unit)===".txt"){
+                        sum.write('console.log(\'' + prefix + element + '\');\n');
+                        //-----------добавляем copyright--------
+                        let new_file = `${NEW_DIRECTORY}\\${path.basename(new_unit)}`;
+                        let logger = fs.createWriteStream(new_file);
+                        fs.readFile(new_unit, (err, data) => {
+                            if (err) console.error("Error (copy files) ")
+                            else logger.write(data + ' ' + copyright);
+                        });
+
+                    }
+                }, this);
+            }
+        });
+    }
+
+    let createDir = function (callback) {
+        //---------создание нового директория-------
+        fs.access(NEW_DIRECTORY, (err) => {
+            if (err && err.code == 'ENOENT') {
+                fs.mkdir(NEW_DIRECTORY, (err) => {
+                    if (err) console.error("Error (mkdir) ");
+                });
+                fs.watch(NEW_DIRECTORY, (eventType, filename) => {
+
+                    console.log(`${eventType} ~ ${filename}`);
+                }
+                });
+            }
+            else console.log("Error (mkdir) ");
+        });
+        //-----------получение copyright-----------
+        fs.readFile("config.json", (err, data) => {
+            if (err) console.error("Error (read .json files) ")
+            else {
+                copyright = JSON.parse(data).copyright;
+            }
+        });
+        callback();
+    }
+
+    createDir(() => readAndCopyDirectory(DIR_PATH, prefix));
+
+}
